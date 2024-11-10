@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typing Game</title>
+    <style>
+        /* Add your styles here if necessary */
+    </style>
+</head>
+<body>
+    <!-- The game will be dynamically inserted here -->
+    <script>
+        // Create and style the game container
+        const gameContainer = document.createElement('div');
+        gameContainer.style.position = 'relative';
+        gameContainer.style.width = '100%';
+        gameContainer.style.height = '80vh';
+        gameContainer.style.border = '1px solid black';
+        gameContainer.style.overflow = 'hidden';
+        gameContainer.style.backgroundImage = 'url("https://cdn.pixabay.com/photo/2023/03/26/02/09/ai-generated-7877391_960_720.jpg")';  // Add your image URL here
+        gameContainer.style.backgroundSize = 'cover';
+        gameContainer.style.backgroundPosition = 'center';
+        document.body.appendChild(gameContainer);
+
+        // Create the sawtooth bottom red line (pointed upwards)
+        const bottomLine = document.createElement('div');
+        bottomLine.style.position = 'absolute';
+        bottomLine.style.bottom = '0';
+        bottomLine.style.width = '100%';
+        bottomLine.style.height = '30px';
+        bottomLine.style.backgroundColor = 'red';
+        bottomLine.style.clipPath = 'polygon(0% 100%, 2% 0%, 4% 100%, 6% 0%, 8% 100%, 10% 0%, 12% 100%, 14% 0%, 16% 100%, 18% 0%, 20% 100%, 22% 0%, 24% 100%, 26% 0%, 28% 100%, 30% 0%, 32% 100%, 34% 0%, 36% 100%, 38% 0%, 40% 100%, 42% 0%, 44% 100%, 46% 0%, 48% 100%, 50% 0%, 52% 100%, 54% 0%, 56% 100%, 58% 0%, 60% 100%, 62% 0%, 64% 100%, 66% 0%, 68% 100%, 70% 0%, 72% 100%, 74% 0%, 76% 100%, 78% 0%, 80% 100%, 82% 0%, 84% 100%, 86% 0%, 88% 100%, 90% 0%, 92% 100%, 94% 0%, 96% 100%, 98% 0%, 100% 100%)';
+        gameContainer.appendChild(bottomLine);
+
+        // Add score and buttons
+        const scoreDisplay = document.createElement('p');
+        scoreDisplay.textContent = 'Score: 0';
+        document.body.appendChild(scoreDisplay);
+
+        const easyButton = document.createElement('button');
+        easyButton.textContent = 'Easy';
+        easyButton.onclick = () => startGame('easy');
+        document.body.appendChild(easyButton);
+
+        const mediumButton = document.createElement('button');
+        mediumButton.textContent = 'Medium';
+        mediumButton.onclick = () => startGame('medium');
+        document.body.appendChild(mediumButton);
+
+        const hardButton = document.createElement('button');
+        hardButton.textContent = 'Hard';
+        hardButton.onclick = () => startGame('hard');
+        document.body.appendChild(hardButton);
+
+        // Word list
+        const words = [
+          "hello", "world", "program", "typing", "game", "challenge", "example", "random", "function", "variable",
+          "object", "array", "string", "number", "boolean", "javascript", "functionality", "visual", "studio", "code",
+          "element", "attribute", "property", "method", "document", "browser", "window", "screen", "keyboard", "event",
+          "listener", "interval", "timeout", "loop", "conditional", "statement", "block", "comment", "debug", "compile",
+          "execute", "output", "input", "parameter", "argument", "return", "scope", "closure", "prototype", "class",
+          "inheritance", "encapsulation", "polymorphism", "abstraction", "error", "exception", "catch", "throw", "try",
+          "finally", "syntax", "operator", "expression", "evaluate", "logical", "compare", "arithmetic", "iteration",
+          "recursion", "declare", "define", "initialize", "assign", "expression", "statement", "compare", "increment",
+          "decrement", "add", "subtract", "multiply", "divide", "modulus", "concatenate", "parse", "convert", "toString"
+        ];
+
+        let activeWords = [];
+        let score = 0;
+        let animationFrameId;
+        let currentDifficulty;
+        let spawnTimeout;
+
+        const difficultySettings = {
+          easy: { spawnInterval: 2000, maxWords: 3, gravity: 1.2 },
+          medium: { spawnInterval: 1200, maxWords: 5, gravity: 1.6 },
+          hard: { spawnInterval: 800, maxWords: 8, gravity: 2 }
+        };
+
+        function startGame(difficulty) {
+          cancelAnimationFrame(animationFrameId);
+          clearTimeout(spawnTimeout);
+          clearWords();
+
+          activeWords = [];
+          score = 0;
+          scoreDisplay.textContent = 'Score: ' + score;
+          currentDifficulty = difficultySettings[difficulty];
+          spawnWord();
+          animateWords();
+          window.addEventListener('keydown', handleTyping);
+        }
+
+        function spawnWord() {
+          if (activeWords.length < currentDifficulty.maxWords) {
+            const wordText = words[Math.floor(Math.random() * words.length)];
+            const eggEl = document.createElement('div');
+            eggEl.className = 'egg';
+            eggEl.style.position = 'absolute';
+            eggEl.style.fontSize = '24px';
+            eggEl.style.color = 'black';
+            eggEl.style.whiteSpace = 'nowrap';
+            eggEl.style.padding = '10px';
+            eggEl.style.borderRadius = '50%';
+            eggEl.style.backgroundColor = 'grey';
+            eggEl.style.border = '2px solid black';
+            eggEl.style.textAlign = 'center';
+            eggEl.style.width = 'fit-content';
+            eggEl.style.left = generateNonOverlappingLeft() + '%';
+            eggEl.style.top = '-50px';
+            eggEl.textContent = wordText;
+            eggEl.dataset.word = wordText;
+            gameContainer.appendChild(eggEl);
+            activeWords.push({ el: eggEl, text: wordText, y: 0, speed: currentDifficulty.gravity });
+          }
+          spawnTimeout = setTimeout(spawnWord, currentDifficulty.spawnInterval);
+        }
+
+        function generateNonOverlappingLeft() {
+          let leftPos;
+          let overlap;
+          do {
+            leftPos = Math.random() * 80;
+            overlap = activeWords.some(wordObj => Math.abs(parseFloat(wordObj.el.style.left) - leftPos) < 10);
+          } while (overlap);
+          return leftPos;
+        }
+
+        function animateWords() {
+          activeWords.forEach((wordObj, index) => {
+            wordObj.y += wordObj.speed;
+            wordObj.el.style.top = wordObj.y + 'px';
+
+            if (wordObj.text.length === wordObj.el.dataset.word.length) {
+              wordObj.el.style.backgroundColor = 'grey';
+            } else if (wordObj.text.length > 1) {
+              wordObj.el.style.backgroundColor = 'yellow';
+            } else {
+              wordObj.el.style.backgroundColor = 'green';
+            }
+
+            if (wordObj.y >= gameContainer.offsetHeight - 30) {
+              breakEgg(wordObj.el);
+              gameOver();
+            }
+          });
+          animationFrameId = requestAnimationFrame(animateWords);
+        }
+
+        function handleTyping(event) {
+          const typedChar = event.key;
+          activeWords.forEach((wordObj, index) => {
+            if (wordObj.text.startsWith(typedChar)) {
+              wordObj.text = wordObj.text.slice(1);
+              wordObj.el.textContent = wordObj.text;
+
+              if (wordObj.text.length === 0) {
+                score++;
+                scoreDisplay.textContent = 'Score: ' + score;
+                wordObj.el.remove();
+                activeWords.splice(index, 1);
+              }
+            }
+          });
+        }
+
+        function clearWords() {
+          activeWords.forEach(wordObj => wordObj.el.remove());
+          activeWords = [];
+        }
+
+        function breakEgg(eggEl) {
+          eggEl.style.backgroundColor = 'yellow';
+          eggEl.style.border = 'none';
+          eggEl.style.textDecoration = 'line-through';
+          eggEl.textContent = 'Egg Broken!';
+        }
+
+        function gameOver() {
+          cancelAnimationFrame(animationFrameId);
+          clearTimeout(spawnTimeout);
+          clearWords();
+          alert('Game Over! Your score: ' + score);
+          window.removeEventListener('keydown', handleTyping);
+        }
+    </script>
+</body>
+</html>
